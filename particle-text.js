@@ -88,7 +88,7 @@ var particleText = (function() {
 
         // enter the pixels
         for(var i = 0; i<this.pixels.length; i++) {
-            var size = Math.random()*15;
+            var size = Math.random()*14;
             i = Math.round(i+size);
             if(i >= (this.pixels.length-1)) return;
 
@@ -149,14 +149,11 @@ var particleText = (function() {
         self.y += self.vy;
         self.x += self.vx;
 
-        // get change in time
-        var date = new Date();
-        var time = date.getTime();
-        var timeDiff = (time - data.time);
-        var mouseForce = 10 * timeDiff;
-        var originForce = 0.08 * timeDiff;
-        var friction = 0.03 * timeDiff;
-        var vMax = 2;
+        var variation = Math.random();
+        var mouseForce = 10 * variation;
+        var originForce = 0.09 * variation;
+        var friction = 0.04 * variation;
+        var vMax = 5;
 
         // --- target positions --- //
         if (data.mousePos.x == 9999 || data.mousePos.y == 9999) {
