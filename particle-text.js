@@ -57,6 +57,7 @@ var particleText = (function() {
      * }
      */
     var Letter = function(params) {
+        this.color = params.color;
         this.width = params.width;
         this.height = params.height;
         this.text = params.text;
@@ -71,12 +72,12 @@ var particleText = (function() {
         data.ctx.fillText(this.text, this.x, this.y);
         var imageData = data.ctx.getImageData(this.x, (this.y-this.height), this.width , this.height);
         data.ctx.clearRect(this.x, (this.y-this.height), this.width, this.height);
-
+  
         // build bounding polygon
         var pixelData = imageData.data;
         var len = pixelData.length;
         for (var i = len; i >= 0; i -= 4) {
-            if (pixelData[i + 3] > 0 && pixelData[i+3] != 255) {
+            if (pixelData[i+2] > 0 && pixelData[i+2] != 255) {
                 var pixel = {
                     x: (i / 4) % this.width,
                     y: Math.floor((i / 4) / this.width)
@@ -87,10 +88,21 @@ var particleText = (function() {
 
         // enter the pixels
         for(var i = 0; i<this.pixels.length; i++) {
-            // TODO fill bounding polygon
-            // instead of using bounding pixels
-            // for particle locations (using density)
-            this.particles.push(new Particle(Math.random()*10, this.x+this.pixels[i].x, this.y+this.pixels[i].y, 0, 0));
+            var size = Math.random()*15;
+            i = Math.round(i+size);
+            if(i >= (this.pixels.length-1)) return;
+
+            // TODO fill bounding polygon instead
+            // of spacing out indexes by size
+            this.particles.push(new Particle({
+                parent : this.text,
+                color : '#00BCA3',
+                size: size, 
+                x: this.x+this.pixels[i].x, 
+                y: this.y+this.pixels[i].y, 
+                vx : 0, 
+                vy : 0
+            }));
         }
 
     };
@@ -107,14 +119,16 @@ var particleText = (function() {
      * @param {int} vx
      * @param {int} vy
      */
-    var Particle = function(size, x, y, vx, vy) {
-        this.x = x;
-        this.y = y;
-        this.vx = vx;
-        this.vy = vy;
-        this.origX = x;
-        this.origY = y;
-        this.radius = size / 2;
+    var Particle = function(params) {
+        this.parent = params.parent;
+        this.x = params.x;
+        this.y = params.y;
+        this.vx = params.vx;
+        this.vy = params.vy;
+        this.origX = params.x;
+        this.origY = params.y;
+        this.radius = params.size / 2;
+        this.color = params.color;
     };
 
     // draw the particle
@@ -122,7 +136,7 @@ var particleText = (function() {
         data.ctx.beginPath();
         //data.ctx.arc(this.x, this.y, this.radius, 0, 2 * Math.PI, false);
         data.ctx.rect(this.x, this.y, this.radius, this.radius)
-        data.ctx.fillStyle = '#00BCA3';
+        data.ctx.fillStyle = this.color;
         data.ctx.fill();
     };
 
@@ -140,7 +154,7 @@ var particleText = (function() {
         var time = date.getTime();
         var timeDiff = (time - data.time);
         var mouseForce = 10 * timeDiff;
-        var originForce = 0.07 * timeDiff;
+        var originForce = 0.08 * timeDiff;
         var friction = 0.03 * timeDiff;
         var vMax = 2;
 
@@ -241,11 +255,12 @@ var particleText = (function() {
     };
 
     // ---- helper functions ----- //
+
     /*
      * updateMousePos
      *  - get current mouse pos
      *
-     * @param {object} evt
+     * @param {object} e
      */
     var updateMousePos = function(e) {
         // get canvas position
@@ -266,6 +281,8 @@ var particleText = (function() {
     /*
      * animate
      *  - animate the whole shebang
+     *
+     * @param {string} word
      */
     var animate = function(word) {
         // TODO make sure we are in
@@ -275,7 +292,7 @@ var particleText = (function() {
         var date = new Date();
         data.time = date.getTime();
 
-        // ---- update letter particles ---- //
+        // ---- update ---- //
         var len = data.letters.length;
         while (len > 0) {
             var letter = data.letters[len - 1];
@@ -292,8 +309,6 @@ var particleText = (function() {
         data.ctx.clearRect(0, 0, data.canvas.width, data.canvas.height);
 
         // ---- re-render ---- //
-        
-        // particles
         var len = data.letters.length;
         while (len > 0) {
             var letter = data.letters[len - 1];
@@ -333,7 +348,10 @@ var particleText = (function() {
      * init
      *  - initialize the science
      *
+     * @param {int} x
+     * @param {int} y
      * @param {string} word
+     * @param {string} font
      */
     var init = function(x, y, word, font) {
 
@@ -353,15 +371,17 @@ var particleText = (function() {
             var w = word[i].width(font);
             tLen += w;
             data.letters.push(new Letter({
-                text : word[i], 
+                color : '#00BCA3',
+                density : data.density,
+                text : word[i],
                 width : w,
                 height: height,
                 x : tLen,
-                y : y,
-                density : data.density
+                y : y
             }));
         }
 
+        // bind events
         data.canvas.removeEventListener('mousemove');
         data.canvas.addEventListener('mousemove', function(e) {
             var pos = updateMousePos(e);
@@ -374,11 +394,10 @@ var particleText = (function() {
             data.mousePos.y = 9999;
         });
 
-        // start animations
+        // start
         var date = new Date();
         data.startTime = date.getTime();
         animate(word);
-
     };
 
     // make available in scope
