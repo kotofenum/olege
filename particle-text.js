@@ -88,7 +88,7 @@ var particleText = (function() {
 
         // enter the pixels
         for(var i = 0; i<this.pixels.length; i++) {
-            var size = Math.random()*14;
+            var size = Math.random()*15;
             i = Math.round(i+size);
             if(i >= (this.pixels.length-1)) return;
 
@@ -151,7 +151,7 @@ var particleText = (function() {
 
         var variation = Math.random();
         var mouseForce = 10 * variation;
-        var originForce = 0.09 * variation;
+        var originForce = 0.07 * variation;
         var friction = 0.04 * variation;
         var vMax = 5;
 
@@ -319,7 +319,7 @@ var particleText = (function() {
         }
 
         // --- request new frame --- //
-        requestAnimFrame(function(){
+        requestAnimFrame(function anim(){
             animate(word);
         });
     };
@@ -379,17 +379,19 @@ var particleText = (function() {
         }
 
         // bind events
-        data.canvas.removeEventListener('mousemove');
-        data.canvas.addEventListener('mousemove', function(e) {
+        var mousemove = function(e) {
             var pos = updateMousePos(e);
             data.mousePos.x = pos.x;
             data.mousePos.y = pos.y;
-        });
-        data.canvas.removeEventListener('mouseout');
-        data.canvas.addEventListener('mouseout', function(e) {
+        };
+        var mouseout = function(e) {
             data.mousePos.x = 9999;
             data.mousePos.y = 9999;
-        });
+        };
+        data.canvas.removeEventListener('mousemove', mousemove);
+        data.canvas.addEventListener('mousemove', mousemove);
+        data.canvas.removeEventListener('mouseout', mouseout);
+        data.canvas.addEventListener('mouseout', mouseout);
 
         // start
         var date = new Date();
