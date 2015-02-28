@@ -63,7 +63,6 @@ var particleText = (function() {
      * }
      */
     var Letter = function(params) {
-        this.color = params.color;
         this.width = params.width;
         this.height = params.height;
         this.text = params.text;
@@ -72,6 +71,10 @@ var particleText = (function() {
         this.y = params.y;
         this.pixels = [];
         this.particles = [];
+        this.color = params.color || '#00BCA3';
+        this.particleMax = params.max || 4;
+
+        this.alphas = 0;
 
         // setup letter
         data.ctx.fillStyle = this.color;
@@ -82,34 +85,103 @@ var particleText = (function() {
         // build bounding polygon
         var pixelData = imageData.data;
         var len = pixelData.length;
-        for (var i = len; i >= 0; i -= 4) {
-            if (pixelData[i+2] > 0 && pixelData[i+2] != 255) {
+        for (var i = 0; i < len; i += 4) {
+
                 var pixel = {
-                    x: (i / 4) % this.width,
-                    y: Math.floor((i / 4) / this.width)
+                    r : pixelData[i],
+                    g : pixelData[i+1],
+                    b : pixelData[i+2],
+                    a : pixelData[i+3]
                 };
-                this.pixels.push(pixel);
+
+                // setup array if not yet created
+                var x = (i / 4) % this.width;
+                var y = Math.floor((i / 4) / this.width);
+
+                if(typeof(this.pixels[y]) == 'undefined') {
+                    this.pixels[y] = [];
+                }
+                this.pixels[y][x] = pixel;
+        }
+
+        // create the particles
+        for(var y = 0, yLen=this.pixels.length; y<yLen; y++) {
+            for(var x = 0, xLen=this.pixels[y].length; x<xLen; x++) {
+
+                // white pixel?
+                if(this.checkPixel(y,x))
+                    continue;
+
+                //for(var k = 1; k<=6; k++) {
+                    var size = this.particleMax;
+                    //var size = Math.floor(this.particleMax/k); 
+                    //var size = Math.round(Math.random()*(10-2)+1);
+
+                    var particleMap = this.checkParticle(y,x,size);
+
+                    if(particleMap) {
+                        this.particles.push(new Particle({
+                            parent : this.text,
+                            color : this.color,
+                            size: size, 
+                            x: this.x+x, 
+                            y: this.y+y,
+                            vx : 0,
+                            vy : 0
+                        }));
+                        //break;
+                    }
+                //}
+               
             }
         }
 
-        // enter the pixels
-        for(var i = 0; i<this.pixels.length; i++) {
-            var size = Math.random()*10;
-            i = Math.round(i+size);
-            if(i >= (this.pixels.length-1)) return;
+    };
 
-            // TODO fill bounding polygon instead
-            // of spacing out indexes by size
-            this.particles.push(new Particle({
-                parent : this.text,
-                color : '#00BCA3',
-                size: size, 
-                x: this.x+this.pixels[i].x, 
-                y: this.y+this.pixels[i].y, 
-                vx : 0, 
-                vy : 0
-            }));
+    // check if a particle fits in a pixel grid
+    Letter.prototype.checkParticle = function(y,x,l) {
+
+        l -= l*.5;
+        var particleMap = [];
+        var empty = 0;
+        var total = 0;
+        for(var yLen = l+y; y<yLen; y++) {
+            for(var xLen = l+x; x<xLen; x++) {
+
+                if(this.checkPixel(y,x)) {
+                    empty++;
+                } else {
+                    particleMap.push({x : x, y: y, data: this.pixels[y][x] });
+                }
+                total++;
+            }
         }
+
+        if(empty/total > .5) {
+            return false;
+        }
+
+        this.updateParticles(particleMap);
+
+        return particleMap;
+    };
+
+    // update particle pixel grid to all white
+    Letter.prototype.updateParticles = function(particleMap) {
+
+        for(var k = 0,l = particleMap.length; k<l ; k++) {
+            this.pixels[particleMap[k].y][particleMap[k].x].a = 0;
+        }
+    };
+
+    //  check if a pixel is white
+    Letter.prototype.checkPixel = function(y, x) {
+        if(!this.pixels[y]) return true;
+
+        var pixel = this.pixels[y][x];
+
+        if(typeof(pixel) == 'undefined' ) return true;
+        return pixel.a == 0;
 
     };
 
@@ -133,15 +205,15 @@ var particleText = (function() {
         this.vy = params.vy;
         this.origX = params.x;
         this.origY = params.y;
-        this.radius = params.size / 2;
+        this.size = params.size;
         this.color = params.color;
     };
 
     // draw the particle
     Particle.prototype.draw = function() {
         data.ctx.beginPath();
-        //data.ctx.arc(this.x, this.y, this.radius, 0, 2 * Math.PI, false);
-        data.ctx.rect(this.x, this.y, this.radius, this.radius)
+        //data.ctx.arc(this.x, this.y, this.size/2, 0, 2 * Math.PI, false);
+        data.ctx.rect(this.x, this.y, this.size, this.size)
         data.ctx.fillStyle = this.color;
         data.ctx.fill();
     };
