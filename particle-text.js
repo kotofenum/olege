@@ -42,9 +42,15 @@ var particleText = (function() {
         ctx: null,
         mousePos: {
             x: 9999,
-            y: 9999
+            y: 9999,
+            d2c: 0
         },
-        time: null
+        time: null,
+        text : {
+            width : 0,
+            height : 0,
+            center : 0
+        }
     };
 
     /**
@@ -72,7 +78,7 @@ var particleText = (function() {
         data.ctx.fillText(this.text, this.x, this.y);
         var imageData = data.ctx.getImageData(this.x, (this.y-this.height), this.width , this.height);
         data.ctx.clearRect(this.x, (this.y-this.height), this.width, this.height);
-  
+
         // build bounding polygon
         var pixelData = imageData.data;
         var len = pixelData.length;
@@ -88,7 +94,7 @@ var particleText = (function() {
 
         // enter the pixels
         for(var i = 0; i<this.pixels.length; i++) {
-            var size = Math.random()*15;
+            var size = Math.random()*10;
             i = Math.round(i+size);
             if(i >= (this.pixels.length-1)) return;
 
@@ -149,14 +155,19 @@ var particleText = (function() {
         self.y += self.vy;
         self.x += self.vx;
 
-        var variation = Math.random();
-        var mouseForce = 10 * variation;
-        var originForce = 0.07 * variation;
-        var friction = 0.04 * variation;
-        var vMax = 5;
+        // TODO variation?
+        //var variation = Math.random();
+        var mouseForce = 15; // * variation;
+        var originForce = 0.2; // * variation;
+        var friction = 0.09; //* variation;
+        var vMax = Math.random()* (5-2)+2;
 
         // --- target positions --- //
-        if (data.mousePos.x == 9999 || data.mousePos.y == 9999) {
+        var dx = data.text.center.x-data.mousePos.x;
+        var dy = data.text.center.y-data.mousePos.y;
+        data.mousePos.d2c = Math.sqrt(Math.pow(dx, 2)+Math.pow(dy, 2));
+
+        if (data.mousePos.d2c > 250 + (125-Math.abs(dy)) ) {
             // origin
             if (self.x > self.origX) {
                 self.vx -= originForce;
@@ -193,9 +204,9 @@ var particleText = (function() {
             }
 
             // slow/stop (square around mouse)
-            if (mouse.dx > -30 && mouse.dx < 30 && mouse.dy > -30 && mouse.dy < 30) {
-                self.vx = self.vx * .01;
-                self.vy = self.vy * .01;
+            if (mouse.radius < 20) {
+                self.vx = (self.vx * -1) * .8;
+                self.vy = (self.vy * -1) * .8;
             }
         }
 
@@ -260,18 +271,10 @@ var particleText = (function() {
      * @param {object} e
      */
     var updateMousePos = function(e) {
-        // get canvas position
-        var obj = data.canvas;
-        var top = 0;
-        var left = 0;
-        while (obj.tagName != 'BODY') {
-            top += obj.offsetTop;
-            left += obj.offsetLeft;
-            obj = obj.offsetParent;
-        }
+        var rect = data.canvas.getBoundingClientRect();
         // return relative mouse position
-        data.mousePos.x = e.clientX - left + window.pageXOffset;
-        data.mousePos.y = e.clientY - top + window.pageYOffset;
+        data.mousePos.x = e.clientX - rect.left;
+        data.mousePos.y = e.clientY - rect.top;
         return data.mousePos;
     };
 
@@ -353,6 +356,8 @@ var particleText = (function() {
     var init = function(x, y, word, font) {
 
         // setup canvas
+        data.x = x;
+        data.y = y;
         data.width = window.innerWidth;
         data.height = window.innerHeight;
         data.canvas = document.getElementById('canvas');
@@ -363,7 +368,7 @@ var particleText = (function() {
 
         var tLen = x;
         var len = word.length;
-        var height = (font.split(' ')[1]).replace('px','');
+        var height = parseInt((font.split(' ')[1]).replace('px',''));
         for (var i = 0; i < len; i++) {
             var w = word[i].width(font);
             tLen += w;
@@ -377,6 +382,14 @@ var particleText = (function() {
                 y : y
             }));
         }
+
+        // save the text dimensions / center coordinate
+        data.text.width = tLen-data.x;
+        data.text.height = height;
+        data.text.center = { 
+            x : data.x+(data.text.width/2)+80, 
+            y : data.y+(data.text.height/2)+10
+        };
 
         // bind events
         var mousemove = function(e) {
@@ -398,6 +411,7 @@ var particleText = (function() {
         data.startTime = date.getTime();
         animate(word);
     };
+    
 
     // make available in scope
     return init;
