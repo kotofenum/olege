@@ -386,7 +386,7 @@ var particleText = (function() {
         // save the text dimensions / center coordinate
         data.text.width = tLen-data.x;
         data.text.height = height;
-        data.text.center = { 
+        data.text.center = {
             x : data.x+(data.text.width/2)+80, 
             y : data.y+(data.text.height/2)+10
         };

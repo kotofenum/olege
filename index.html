@@ -2,39 +2,46 @@
 <html>
     <head>
         <title>Do you have pull?</title>
-        <script src="particle-text.js"></script>
+        <script src="paper-core.min.js"></script>
+        <script src="particle-text-paper.js"></script>
         <style>
             * {margin:0;}
-
             h1, h2 {
                 color: #444;
                 font-family: helvetica;
                 font-size: 100px;
                 font-weight: "bold";
-                text-align: center;
             }
-
             h1 {
-                margin: 50px 0 0 -300px;
+                margin: 50px 0 0 635px;
             }
             h2 {
-                margin: 100px 0 0 -373px;
+                margin: 100px 0 0 635px;
             }
         </style>
     </head>
     <body>
         <h1>DO YOU</h1>
         <h2>PULL?</h2>
-        <canvas id="canvas" style="position:absolute; top:0; left:0;"></canvas>
+        <canvas id="canvas1" style="position:absolute; top:0; left:0;"></canvas>
         
         <script>
-            // init
-            var x = window.innerWidth/2-420;
-            var y = 120;
-            var text = "HAVE";
-            var font = 'bold 100px helvetica';
 
-            particleText(x, y, text, font);
+            // init the first canvas
+            var word = new ParticleText({
+                canvas : 'canvas1',
+                width : window.innerWidth,
+                height : 400,
+                word : {
+                    point: [635,225],
+                    content: 'HAVE',
+                    fillColor: '#00BCA3',
+                    fontFamily: 'helvetica',
+                    fontWeight: 'bold',
+                    fontSize: 100
+                }
+            });
+            
 
         </script>
     </body>
