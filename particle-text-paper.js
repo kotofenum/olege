@@ -41,27 +41,24 @@ var ParticleText = function(params) {
      */
     this.Particle = function(parent, params) {
          this.parent = parent;
-         this.point = params.point;
          this.vx = params.vx || 0;
          this.vy = params.vy || 0;
+         this.point = params.point;
          this.origin = params.point;
-         this.size = params.size;
-         this.color = params.color;
-         this.path = null;
+         this.path = params.path;
+         this.scale = params.scale;
+         this.symbol = null;
 
          this.init();
     };
 
-    // draw the particle
+    // draw the particle symbol
     this.Particle.prototype.init = function() {
         var parent = this.parent;
 
-        this.path = new parent.paper.Path.Rectangle({
-            center: this.point,
-            size: this.size,
-            fillColor: this.color
-        });
-
+        var symbol = new parent.paper.Symbol(this.path);
+        this.symbol = symbol.place(this.point);
+        this.symbol.scale(this.scale, this.scale);
     };
 
     // update the particle physics
@@ -72,14 +69,15 @@ var ParticleText = function(params) {
 
         // set position based 
         // on current velocity
-        self.path.position.x += self.vy;
-        self.path.position.y += self.vx;
+        self.symbol.position.x += self.vx;
+        self.symbol.position.y += self.vy;
 
+        /*
         var mouse = {};
         mouse.x = parent.mouse.pos.x;
         mouse.y = parent.mouse.pos.y;
-        mouse.dx = self.path.position.x - mouse.x;
-        mouse.dy = self.path.position.y - mouse.y;
+        mouse.dx = self.symbol.position.x - mouse.x;
+        mouse.dy = self.symbol.position.y - mouse.y;
         mouse.radius = Math.sqrt(Math.pow(mouse.dx, 2) + Math.pow(mouse.dy, 2));
         mouse.dTotal = Math.abs(mouse.dx) + Math.abs(mouse.dy);
         mouse.accX = ((Math.abs(mouse.dx) * 2) / mouse.dTotal) * (1 / mouse.radius) * .2;
@@ -95,7 +93,7 @@ var ParticleText = function(params) {
         } else {
             self.vy -= mouse.accY;
         }
-
+        */
     };
 
     // initialize
@@ -120,8 +118,6 @@ ParticleText.prototype.init = function(params){
 
     // setup canvas
     self.canvas = document.getElementById(params.canvas);
-    self.canvas.width = params.width;
-    self.canvas.height = params.height;
     self.paper = new paper.PaperScope();
 
     // setup paper
@@ -137,31 +133,53 @@ ParticleText.prototype.init = function(params){
     };
 
     // setup text 
-    var gridSize = 5;
-    var spacing = 1;
+    var gridSize = params.density || 9;
+    var size = params.size || gridSize/3;
+    var scale = params.scale || self.word.fontSize / gridSize / 72;
+    var fontSize = self.word.fontSize;
 
     self.word = new self.paper.PointText(self.word);
-    self.raster = self.word.rasterize(10);
+    self.raster = self.word.rasterize();
+
+    // font size 100 = 322 x 120
+    self.raster.size = new self.paper.Size(self.raster.width*scale, self.raster.height*scale);
     self.raster.visible = false;
+
+    // re-calculate width with % padding
+    var scaledW = self.raster.width * gridSize;
+    var scaledH = self.raster.height * gridSize;
+    var whRation = scaledH/scaledW;
+    var width = params.width || scaledW + (scaledW * whRation);
+    var height = params.height  || scaledH + (scaledH * whRation);
+
+    self.canvas.width = width;
+    self.canvas.height = height;
+
+    // setup default path
+    var path = new parent.paper.Path.Circle({
+        center: new self.paper.Point(0,0),
+        radius: 1,
+        fillColor: self.word.fillColor
+    });
 
     for (var y = 0; y < self.raster.height; y++) {
         for(var x = 0; x < self.raster.width; x++) {
 
             // Get the color of the pixel:
             var color = self.raster.getPixel(x, y);
+
+            if( (color.green == 0 && color.red == 0 && color.blue == 0) || color.alpha == .4)
+                continue;
+    
+            var center = new self.paper.Point(x, y);
+            var point = new self.paper.Point(center.x*gridSize,center.y*gridSize);
             
-            if(color.alpha > 0) {
-                var size = gridSize / 2 / spacing;
-                var center = new self.paper.Point(x, y);
-                var point = new self.paper.Point(center.x*gridSize,center.y*gridSize);
-                
-                // Create a particle
-                self.particles.push(new self.Particle(self, {
-                    point : point,
-                    size : 5*color.alpha,
-                    color : self.word.fillColor
-                }));
-            }
+            // Create a particle symbol
+            self.particles.push(new self.Particle(self, {
+                point : point,
+                scale : size * color.alpha,
+                path : path
+            }));
             
         }
     }
@@ -171,8 +189,17 @@ ParticleText.prototype.init = function(params){
     self.word.remove();
 
     // reposition
-    self.paper.project.activeLayer.position = new self.paper.Point(self.word.point.x, self.word.point.y);
+    self.paper.view.viewSize = new self.paper.Size(width, height);
+    self.paper.project.activeLayer.position = new self.paper.Point(self.paper.view.center);
 
     // setup animation events
     self.paper.view.onFrame = self.animate.bind(this);
+
+    console.log('PARTICLE TEXT');
+    console.log('-------------')
+    console.log('# fontSize:', fontSize);
+    console.log('# gridSize:', gridSize);
+    console.log('# size:', size);
+    console.log('# scale:', scale);
+    console.log('# total particles:', self.particles.length);
 };

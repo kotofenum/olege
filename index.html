@@ -6,36 +6,61 @@
         <script src="particle-text-paper.js"></script>
         <style>
             * {margin:0;}
-            h1, h2 {
+            h1, h2, div {
                 color: #444;
                 font-family: helvetica;
                 font-size: 100px;
-                font-weight: "bold";
-                text-align: center;
+                font-weight: bold;
             }
             h1 {
-                margin: 50px;
+                margin: 50px 0 0 200px;
+            }
+            #canvas1 {
+                /*position:absolute; top: 150px; left: 20%;*/
+                margin: -210px 0 0 364px;
             }
         </style>
     </head>
     <body>
-        <h1>DO YOU HAVE</h1>
-        <canvas id="canvas1" style="position:absolute; top:0; left:0;"></canvas>
+        <h1>DO YOU <br>HAVE</h1>
+        <canvas id="canvas1"></canvas>
         
         <script>
+            /* 
+             * width
+             *  - String width hack 
+             *  (because measureText sucks)
+             * 
+             * @param {string} font
+             */
+            String.prototype.width = function(font) {
+              var f = font || '12px arial',
+                  o = document.createElement('div'),
+                  t = document.createTextNode(this);
+                  o.appendChild(t);
+                  o.style.position = 'absolute'; 
+                  o.style.float = 'left';
+                  o.style['white-space'] = 'nowrap';
+                  o.style.visibility = 'hidden';
+                  o.style.font = f;
+                  document.body.appendChild(o);
+                  var w = o.clientWidth;
+                  o.parentNode.removeChild(o);
+              return w;
+            };
 
             // init the first canvas
             var word = new ParticleText({
                 canvas : 'canvas1',
-                width : window.innerWidth,
-                height : 400,
+                width : 700,
+                height : 500,
+                density : 8,
                 word : {
-                    point: [635,225],
                     content: 'PULL?',
                     fillColor: '#00BCA3',
                     fontFamily: 'helvetica',
                     fontWeight: 'bold',
-                    fontSize: 100
+                    fontSize: 100,
                 }
             });
             
