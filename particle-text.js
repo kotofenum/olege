@@ -112,66 +112,17 @@ var particleText = (function() {
                 if(this.checkPixel(y,x))
                     continue;
 
-                //for(var k = 1; k<=6; k++) {
-                    var size = this.particleMax;
-                    //var size = Math.floor(this.particleMax/k); 
-                    //var size = Math.round(Math.random()*(10-2)+1);
-
-                    var particleMap = this.checkParticle(y,x,size);
-
-                    if(particleMap) {
-                        this.particles.push(new Particle({
-                            parent : this.text,
-                            color : this.color,
-                            size: size, 
-                            x: this.x+x, 
-                            y: this.y+y,
-                            vx : 0,
-                            vy : 0
-                        }));
-                        //break;
-                    }
-                //}
+                this.particles.push(new Particle({
+                    parent : this.text,
+                    color : this.color,
+                    size : 7 * (this.pixels[y][x].a/255),
+                    x : this.x + (x*7), 
+                    y : this.y + (y*7)
+                }));
                
             }
         }
 
-    };
-
-    // check if a particle fits in a pixel grid
-    Letter.prototype.checkParticle = function(y,x,l) {
-
-        l -= l*.5;
-        var particleMap = [];
-        var empty = 0;
-        var total = 0;
-        for(var yLen = l+y; y<yLen; y++) {
-            for(var xLen = l+x; x<xLen; x++) {
-
-                if(this.checkPixel(y,x)) {
-                    empty++;
-                } else {
-                    particleMap.push({x : x, y: y, data: this.pixels[y][x] });
-                }
-                total++;
-            }
-        }
-
-        if(empty/total > .5) {
-            return false;
-        }
-
-        this.updateParticles(particleMap);
-
-        return particleMap;
-    };
-
-    // update particle pixel grid to all white
-    Letter.prototype.updateParticles = function(particleMap) {
-
-        for(var k = 0,l = particleMap.length; k<l ; k++) {
-            this.pixels[particleMap[k].y][particleMap[k].x].a = 0;
-        }
     };
 
     //  check if a pixel is white
@@ -201,19 +152,19 @@ var particleText = (function() {
         this.parent = params.parent;
         this.x = params.x;
         this.y = params.y;
-        this.vx = params.vx;
-        this.vy = params.vy;
         this.origX = params.x;
         this.origY = params.y;
         this.size = params.size;
         this.color = params.color;
+        this.vx = params.vx || 0;
+        this.vy = params.vy || 0;
     };
 
     // draw the particle
     Particle.prototype.draw = function() {
         data.ctx.beginPath();
-        //data.ctx.arc(this.x, this.y, this.size/2, 0, 2 * Math.PI, false);
-        data.ctx.rect(this.x, this.y, this.size, this.size)
+        data.ctx.arc(this.x, this.y, this.size/2, 0, 2 * Math.PI, false);
+        //data.ctx.rect(this.x, this.y, this.size, this.size)
         data.ctx.fillStyle = this.color;
         data.ctx.fill();
     };
@@ -443,7 +394,7 @@ var particleText = (function() {
         var height = parseInt((font.split(' ')[1]).replace('px',''));
         for (var i = 0; i < len; i++) {
             var w = word[i].width(font);
-            tLen += w;
+            tLen += w*7;
             data.letters.push(new Letter({
                 color : '#00BCA3',
                 density : data.density,
