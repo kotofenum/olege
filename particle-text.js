@@ -1,12 +1,12 @@
 
 /* 
- * width
- *  - String width hack 
+ * size
+ *  - String width/size hack 
  *  (because measureText sucks)
  * 
  * @param {string} font
  */
-String.prototype.width = function(font) {
+String.prototype.size = function(font) {
   var f = font || '12px arial',
       o = document.createElement('div'),
       t = document.createTextNode(this);
@@ -18,8 +18,9 @@ String.prototype.width = function(font) {
       o.style.font = f;
       document.body.appendChild(o);
       var w = o.clientWidth;
+      var h = o.clientHeight;
       o.parentNode.removeChild(o);
-  return w;
+  return { height :h, width: w };
 };
 
 // 
@@ -30,111 +31,46 @@ String.prototype.width = function(font) {
 // @author Michael Roth <mroth@highbridgecreative.com>
 // @version v0.0.1
 //
-var particleText = (function() {
+var ParticleText = function(text, params){
+    // text to be particlized
+    this.text = text || 'TEXT';
 
-    // data
-    var data = {
-        density: 150,
-        letters: [],
-        width: null,
-        height: null,
-        canvas: null,
-        ctx: null,
-        mousePos: {
-            x: 9999,
-            y: 9999,
-            d2c: 0
-        },
-        time: null,
-        text : {
-            width : 0,
-            height : 0,
-            center : 0
-        }
+    // canvas
+    this.id = params.canvas || 'canvas';
+    this.canvas = null;
+    this.canvasWidth = params.canvasWidth;
+    this.canvasHeight = params.canvasHeight; 
+    this.ctx = null;
+
+    // font
+    this.font = {
+        // basic font styles
+        size : params.font.size || 12,
+        family : params.font.family || 'helvetica',
+        color : params.font.color || '#000000',
+        weight : params.font.weight || 'bold'
     };
 
-    /**
-     * Letter
-     *  - creates a letter object at position x,y
-     *    letters are comprised of x number of particles
-     *
-     * @param {object} params {
-     *    text, x, y, width, height, color
-     * }
-     */
-    var Letter = function(params) {
-        this.width = params.width;
-        this.height = params.height;
-        this.text = params.text;
-        this.density = params.density;
-        this.x = params.x;
-        this.y = params.y;
-        this.pixels = [];
-        this.particles = [];
-        this.color = params.color || '#00BCA3';
-        this.particleMax = params.max || 4;
-
-        this.alphas = 0;
-
-        // setup letter
-        data.ctx.fillStyle = this.color;
-        data.ctx.fillText(this.text, this.x, this.y);
-        var imageData = data.ctx.getImageData(this.x, (this.y-this.height), this.width , this.height);
-        data.ctx.clearRect(this.x, (this.y-this.height), this.width, this.height);
-
-        // build bounding polygon
-        var pixelData = imageData.data;
-        var len = pixelData.length;
-        for (var i = 0; i < len; i += 4) {
-
-                var pixel = {
-                    r : pixelData[i],
-                    g : pixelData[i+1],
-                    b : pixelData[i+2],
-                    a : pixelData[i+3]
-                };
-
-                // setup array if not yet created
-                var x = (i / 4) % this.width;
-                var y = Math.floor((i / 4) / this.width);
-
-                if(typeof(this.pixels[y]) == 'undefined') {
-                    this.pixels[y] = [];
-                }
-                this.pixels[y][x] = pixel;
-        }
-
-        // create the particles
-        for(var y = 0, yLen=this.pixels.length; y<yLen; y++) {
-            for(var x = 0, xLen=this.pixels[y].length; x<xLen; x++) {
-
-                // white pixel?
-                if(this.checkPixel(y,x))
-                    continue;
-
-                this.particles.push(new Particle({
-                    parent : this.text,
-                    color : this.color,
-                    size : 7 * (this.pixels[y][x].a/255),
-                    x : this.x + (x*7), 
-                    y : this.y + (y*7)
-                }));
-               
-            }
-        }
-
+    // the mouse
+    this.mouse = {
+        x: 9999,
+        y: 9999,
+        d2c: 0
     };
 
-    //  check if a pixel is white
-    Letter.prototype.checkPixel = function(y, x) {
-        if(!this.pixels[y]) return true;
-
-        var pixel = this.pixels[y][x];
-
-        if(typeof(pixel) == 'undefined' ) return true;
-        return pixel.a == 0;
-
-    };
+    // general
+    this.startTime = null;
+    this.time = null;
+    this.particles = [];
+    this.pixels = [],
+    this.density = params.density || 5;
+    this.size = params.size || 3;
+    this.width = 0;
+    this.height = 0;
+    this.center = {
+        x : 0, 
+        y: 0
+    };  
 
     /**
      * particle
@@ -142,35 +78,35 @@ var particleText = (function() {
      *    particles have gravity of k to the mouse and v
      *    back to their original starting position.
      *
-     * @param {int} size
-     * @param {int} x
-     * @param {int} y
-     * @param {int} vx
-     * @param {int} vy
+     * @param {object} parent
+     * @param {object} params
      */
-    var Particle = function(params) {
-        this.parent = params.parent;
+    this.Particle = function(parent, params) {
+        this.parent = parent;
         this.x = params.x;
         this.y = params.y;
-        this.origX = params.x;
-        this.origY = params.y;
         this.size = params.size;
         this.color = params.color;
+        this.origX = params.x;
+        this.origY = params.y;
         this.vx = params.vx || 0;
         this.vy = params.vy || 0;
+        this.vMax = Math.random()* (5-2)+2;
     };
 
     // draw the particle
-    Particle.prototype.draw = function() {
-        data.ctx.beginPath();
-        data.ctx.arc(this.x, this.y, this.size/2, 0, 2 * Math.PI, false);
-        //data.ctx.rect(this.x, this.y, this.size, this.size)
-        data.ctx.fillStyle = this.color;
-        data.ctx.fill();
+    this.Particle.prototype.draw = function() {
+        var self = this;
+
+        self.parent.ctx.beginPath();
+        self.parent.ctx.arc(self.x, self.y, self.size/2, 0, 2 * Math.PI);
+        //self.parent.ctx.rect(self.x, self.y, self.size, self.size)
+        self.parent.ctx.fillStyle = self.color;
+        self.parent.ctx.fill();
     };
 
-    // update the particle physics
-    Particle.prototype.update = function() {
+    // gravity animation physics
+    this.Particle.prototype.update = function() {
         var self = this;
 
         // set position based 
@@ -183,14 +119,14 @@ var particleText = (function() {
         var mouseForce = 15; // * variation;
         var originForce = 0.2; // * variation;
         var friction = 0.09; //* variation;
-        var vMax = Math.random()* (5-2)+2;
 
         // --- target positions --- //
-        var dx = data.text.center.x-data.mousePos.x;
-        var dy = data.text.center.y-data.mousePos.y;
-        data.mousePos.d2c = Math.sqrt(Math.pow(dx, 2)+Math.pow(dy, 2));
+        // TODO make this better
+        //var dx = self.parent.center.x-self.parent.mouse.x;
+        //var dy = self.parent.center.y-self.parent.mouse.y;
+        //self.parent.mouse.d2c = Math.sqrt(Math.pow(dx, 2)+Math.pow(dy, 2));
 
-        if (data.mousePos.d2c > 250 + (125-Math.abs(dy)) ) {
+        if (self.parent.mouse.x == 9999 || self.parent.mouse.y == 9999) {
             // origin
             if (self.x > self.origX) {
                 self.vx -= originForce;
@@ -205,8 +141,8 @@ var particleText = (function() {
         } else {
             //  mouse
             var mouse = {};
-            mouse.x = data.mousePos.x;
-            mouse.y = data.mousePos.y;
+            mouse.x = self.parent.mouse.x;
+            mouse.y = self.parent.mouse.y;
             mouse.dx = self.x - mouse.x;
             mouse.dy = self.y - mouse.y;
             mouse.radius = Math.sqrt(Math.pow(mouse.dx, 2) + Math.pow(mouse.dy, 2));
@@ -226,23 +162,31 @@ var particleText = (function() {
                 self.vy -= mouse.accY;
             }
 
-            // slow/stop (square around mouse)
+            // orbit the cursor
             if (mouse.radius < 20) {
-                self.vx = (self.vx * -1) * .8;
-                self.vy = (self.vy * -1) * .8;
+                self.vy = 0;
+                self.vx = 0;
+
+                var rotationSpeed = 2000;
+                var currentTime = (new Date()).getTime();
+                var passedTime = currentTime - self.parent.startTime;
+                var angle = Math.PI * 2 * (passedTime / rotationSpeed);
+
+                self.x = self.x + Math.cos(angle) * 5;
+                self.y = self.y + Math.sin(angle) * 5;
             }
         }
 
         // --- max velocity --- //
         if (self.vx > 0) {
-            self.vx = (self.vx > vMax) ? vMax : self.vx;
+            self.vx = (self.vx > self.vMax) ? self.vMax : self.vx;
         } else {
-            self.vx = (self.vx < (vMax * -1)) ? (vMax * -1) : self.vx;
+            self.vx = (self.vx < (self.vMax * -1)) ? (self.vMax * -1) : self.vx;
         }
         if (self.vy > 0) {
-            self.vy = (self.vy > vMax) ? vMax : self.vy;
+            self.vy = (self.vy > self.vMax) ? self.vMax : self.vy;
         } else {
-            self.vy = (self.vy < (vMax * -1)) ? (vMax * -1) : self.vy;
+            self.vy = (self.vy < (self.vMax * -1)) ? (self.vMax * -1) : self.vy;
         }
 
         //  --- friction --- //
@@ -257,11 +201,12 @@ var particleText = (function() {
             self.vy += friction;
         }
 
+        /*
         // --- collisions --- //
         // bottom
         var colDamp = 0.3;
-        if (self.y > (data.canvas.height - self.radius)) {
-            self.y = data.canvas.height - self.radius - 2;
+        if (self.y > (self.parent.canvas.height - self.radius)) {
+            self.y = self.parent.canvas.height - self.radius - 2;
             self.vy *= -1;
             self.vy *= (1 - colDamp);
         }
@@ -272,8 +217,8 @@ var particleText = (function() {
             self.vy *= (1 - colDamp);
         }
         // right
-        if (self.x > (data.canvas.width - self.radius)) {
-            self.x = data.canvas.width - self.radius - 2;
+        if (self.x > (self.parent.canvas.width - self.radius)) {
+            self.x = self.parent.canvas.width - self.radius - 2;
             self.vx *= -1;
             self.vx *= (1 - colDamp);
         }
@@ -283,79 +228,77 @@ var particleText = (function() {
             self.vx *= -1;
             self.vx *= (1 - colDamp);
         }
+        */
     };
 
-    // ---- helper functions ----- //
+    this.init();
+};
 
-    /*
-     * updateMousePos
-     *  - get current mouse pos
-     *
-     * @param {object} e
-     */
-    var updateMousePos = function(e) {
-        var rect = data.canvas.getBoundingClientRect();
-        // return relative mouse position
-        data.mousePos.x = e.clientX - rect.left;
-        data.mousePos.y = e.clientY - rect.top;
-        return data.mousePos;
-    };
+/*
+ * updateMousePos
+ *  - get current mouse pos
+ *
+ * @param {object} e
+ */
+ParticleText.prototype.updateMousePos = function(e) {
+    var rect = this.canvas.getBoundingClientRect();
+    this.mouse.x = e.clientX - rect.left;
+    this.mouse.y = e.clientY - rect.top;
+    return this.mouse;
+};
 
-    /*
-     * animate
-     *  - animate the whole shebang
-     *
-     * @param {string} word
-     */
-    var animate = function(word) {
-        // TODO make sure we are in
-        // viewport otherwise pause (to save resources)
+/*
+ * getOffset
+ *  - get top/left offset of element
+ *
+ * @param {object} el
+ */
+ParticleText.prototype.getOffset = function(el) {
+    var x = 0;
+    var y = 0;
+    while( el && !isNaN( el.offsetLeft ) && !isNaN( el.offsetTop ) ) {
+        x += el.offsetLeft - el.scrollLeft;
+        y += el.offsetTop - el.scrollTop;
+        el = el.offsetParent;
+    }
+    return { x: x , y: y};
+};
 
-        // update time
-        var date = new Date();
-        data.time = date.getTime();
+/*
+ * animate
+ *  - animate the whole shebang
+ *
+ * @param {string} word
+ */
+ParticleText.prototype.animate = function() {
+    var self = this;
 
-        // ---- update ---- //
-        var len = data.letters.length;
-        while (len > 0) {
-            var letter = data.letters[len - 1];
-            var particleLen = letter.particles.length;
-            // update particles
-            while (particleLen > 0) {
-                letter.particles[particleLen - 1].update();
-                particleLen--;
-            }
-            len--;
-        }
 
-        // ---- clear ---- //
-        data.ctx.clearRect(0, 0, data.canvas.width, data.canvas.height);
+    // TODO make sure we are in
+    // viewport otherwise pause (to save resources)
 
-        // ---- re-render ---- //
-        var len = data.letters.length;
-        while (len > 0) {
-            var letter = data.letters[len - 1];
-            var particleLen = letter.particles.length;
-            // draw particles
-            while (particleLen > 0) {
-                letter.particles[particleLen - 1].draw();
-                particleLen--;
-            }
-            len--;
-        }
+    // update time
+    var date = new Date();
+    self.time = date.getTime();
 
-        // --- request new frame --- //
-        requestAnimFrame(function anim(){
-            animate(word);
-        });
-    };
+    // ---- update ---- //
+    var len = self.particles.length;
+    while (len > 0) {
+        self.particles[len - 1].update();
+        len--;
+    }
 
-    /*
-     * requestAnimFrame
-     *  - x-browser requestAnimationFrame
-     *
-     * @param {function} callback
-     */
+    // ---- clear ---- //
+    self.ctx.clearRect(0, 0, self.canvas.width, self.canvas.height);
+
+    // ---- re-render ---- //
+    var len = self.particles.length;
+    while (len > 0) {
+        self.particles[len - 1].draw();
+        len--;
+    }
+
+    // --- request new frame --- //
     var requestAnimFrame = (function(callback) {
         return window.requestAnimationFrame 
             || window.webkitRequestAnimationFrame 
@@ -367,76 +310,133 @@ var particleText = (function() {
             };
     })();
 
-    /* 
-     * init
-     *  - initialize the science
-     *
-     * @param {int} x
-     * @param {int} y
-     * @param {string} word
-     * @param {string} font
-     */
-    var init = function(x, y, word, font) {
+    requestAnimFrame(function doAnim(){
+        self.animate();
+    });
+};
 
-        // setup canvas
-        data.x = x;
-        data.y = y;
-        data.width = window.innerWidth;
-        data.height = window.innerHeight;
-        data.canvas = document.getElementById('canvas');
-        data.canvas.width = data.width;
-        data.canvas.height = data.height;
-        data.ctx = data.canvas.getContext('2d');
-        data.ctx.font = font;
+/*
+ * checkPixel
+ *  - check if a pixel is defined and has an alpha
+ *
+ * @param {int} x
+ * @param {int} y
+ */
+ParticleText.prototype.checkPixel = function(y, x) {
+    if(!this.pixels[y]) return true;
 
-        var tLen = x;
-        var len = word.length;
-        var height = parseInt((font.split(' ')[1]).replace('px',''));
-        for (var i = 0; i < len; i++) {
-            var w = word[i].width(font);
-            tLen += w*7;
-            data.letters.push(new Letter({
-                color : '#00BCA3',
-                density : data.density,
-                text : word[i],
-                width : w,
-                height: height,
-                x : tLen,
-                y : y
+    var pixel = this.pixels[y][x];
+
+    if(typeof(pixel) == 'undefined' ) return true;
+    return pixel.a == 0;
+};
+
+/*
+ * rasterize
+ *  - convert font pixel data into particles
+ */
+ParticleText.prototype.rasterize = function(){
+    var self = this;
+
+    // setup word
+    self.ctx.fillStyle = self.font.color;
+    self.ctx.fillText(self.text, 0, self.height*1.5 );
+
+    var imageData = self.ctx.getImageData(0, 0, self.canvas.width, self.canvas.height);
+    self.ctx.clearRect(0, 0, self.canvas.width, self.canvas.height);
+
+    // build bounding polygon
+    var pixelData = imageData.data;
+    var len = pixelData.length;
+    for (var i = 0; i < len; i += 4) {
+
+            var pixel = {
+                r : pixelData[i],
+                g : pixelData[i+1],
+                b : pixelData[i+2],
+                a : pixelData[i+3]
+            };
+
+            // setup array if not yet created
+            var x = (i / 4) % self.canvas.width;
+            var y = Math.floor((i / 4) / self.canvas.width);
+
+            if(typeof(self.pixels[y]) == 'undefined') {
+                self.pixels[y] = [];
+            }
+            self.pixels[y][x] = pixel;
+    }
+
+    // create the particles
+    for(var y = 0, yLen=self.pixels.length; y<yLen; y++) {
+        for(var x = 0, xLen=self.pixels[y].length; x<xLen; x++) {
+
+            // white pixel?
+            if(self.checkPixel(y,x))
+                continue;
+
+            self.particles.push(new self.Particle(self, {
+                color : self.font.color,
+                size : self.size * (self.pixels[y][x].a/255),
+                x : (x * self.density) + self.width + (self.width/2),
+                y : (y * self.density) - ((self.height*self.density)/2)
             }));
+           
         }
+    }
+};
 
-        // save the text dimensions / center coordinate
-        data.text.width = tLen-data.x;
-        data.text.height = height;
-        data.text.center = { 
-            x : data.x+(data.text.width/2)+80, 
-            y : data.y+(data.text.height/2)+10
+/*
+ * init
+ *  - set er up
+ */
+ParticleText.prototype.init = function() {
+        var self = this;
+
+        // setup
+        var font = self.font.weight+' '+self.font.size+'px '+self.font.family;
+        self.canvas = document.getElementById(self.id);
+        self.width = self.text.size(font).width;
+        self.height = self.text.size(font).height;
+        self.canvas.width = self.canvasWidth || (self.width*self.density) + ((self.width*self.density)*.4);
+        self.canvas.height = self.canvasHeight || (self.height*self.density) + ((self.height*self.density)*.4);
+        self.ctx = self.canvas.getContext('2d');
+        self.ctx.font = font;
+
+        // canvas position
+        var canvasOffset = self.getOffset(self.canvas);
+        self.canvas.x = canvasOffset.x;
+        self.canvas.y = canvasOffset.y;
+
+        // center of word
+        self.center = { 
+            x : self.canvas.x + ((self.width*self.density)/2),
+            y : self.canvas.y + ((self.height*self.density)/2),
         };
 
         // bind events
         var mousemove = function(e) {
-            var pos = updateMousePos(e);
-            data.mousePos.x = pos.x;
-            data.mousePos.y = pos.y;
+            var pos = this.updateMousePos(e);
+            this.mouse.x = pos.x;
+            this.mouse.y = pos.y;
         };
         var mouseout = function(e) {
-            data.mousePos.x = 9999;
-            data.mousePos.y = 9999;
+            this.mouse.x = 9999;
+            this.mouse.y = 9999;
         };
-        data.canvas.removeEventListener('mousemove', mousemove);
-        data.canvas.addEventListener('mousemove', mousemove);
-        data.canvas.removeEventListener('mouseout', mouseout);
-        data.canvas.addEventListener('mouseout', mouseout);
+        self.canvas.removeEventListener('mousemove', mousemove);
+        self.canvas.addEventListener('mousemove', mousemove.bind(self));
+        self.canvas.removeEventListener('mouseout', mouseout);
+        self.canvas.addEventListener('mouseout', mouseout.bind(self));
 
-        // start
-        var date = new Date();
-        data.startTime = date.getTime();
-        animate(word);
-    };
-    
+        // rasterize the word
+        setTimeout(function(){
+            self.rasterize();
 
-    // make available in scope
-    return init;
-
-})();
+            // start animations
+            var date = new Date();
+            self.startTime = date.getTime();
+            self.animate();
+        },10);
+        
+};

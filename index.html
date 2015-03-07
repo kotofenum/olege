@@ -5,39 +5,53 @@
         <script src="particle-text.js"></script>
         <style>
             * {margin:0;}
-
             h1, h2 {
-                color: #444;
+                color: #555;
                 font-family: helvetica;
-                font-size: 100px;
+                font-size: 140px;
                 font-weight: "bold";
+                margin: 40px;
                 text-align: center;
-            }
-
-            h1 {
-                margin: 50px 0 0 -300px;
-            }
-            h2 {
-                margin: 100px 0 0 -373px;
             }
         </style>
     </head>
     <body>
         <h1>DO YOU</h1>
-        <h2>PULL?</h2>
-        <canvas id="canvas" style="position:absolute; top:0; left:0;"></canvas>
-        
+        <canvas id="canvas1" style="position:absolute; top:160px; left: 200px;"></canvas>
+        <canvas id="canvas2" style="position:absolute; top:400px; right: 200px;"></canvas>
+        <canvas id="canvas3" style="position:absolute; top:380px; left: 250px;"></canvas>
         <script>
-            // init
-            var x = window.innerWidth/2-420;
-            var y = 120;
-            var text = "HAVE";
-            var font = 'bold 15px helvetica';
-
-
-
-            particleText(x, y, text, font);
-
+            // setup particle gravity text
+            window.onload = function(){
+                var pt1 = new ParticleText('HAVE',{
+                     canvas : 'canvas1',
+                     density: 10,
+                     size: 7,
+                     font : {
+                        color : '#83CEB8',
+                        size: 22
+                    }
+                });
+                var pt2 = new ParticleText('PULL?',{
+                     canvas : 'canvas2',
+                     density: 10,
+                     size: 7,
+                     font : {
+                        color : '#EA3341',
+                        size: 22
+                    }
+                });
+                var pt3 = new ParticleText('+',{
+                     canvas : 'canvas3',
+                     density: 4,
+                     size: 2,
+                     font : {
+                        color : '#444',
+                        size: 50
+                    }
+                });
+            };
+            
         </script>
     </body>
 </html>
