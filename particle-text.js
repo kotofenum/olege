@@ -60,7 +60,6 @@ var ParticleText = function(text, params){
 
     // general
     this.startTime = null;
-    this.time = null;
     this.particles = [];
     this.pixels = [],
     this.density = params.density || 5;
@@ -91,7 +90,11 @@ var ParticleText = function(text, params){
         this.origY = params.y;
         this.vx = params.vx || 0;
         this.vy = params.vy || 0;
-        this.vMax = Math.random()* (5-2)+2;
+        this.vMax = params.vMax || Math.random()* (5-2)+2;
+        this.orbit = {
+            speed : params.orbit.speed || 3000,
+            distance : params.orbit.distance || 5
+        };
     };
 
     // draw the particle
@@ -167,13 +170,12 @@ var ParticleText = function(text, params){
                 self.vy = 0;
                 self.vx = 0;
 
-                var rotationSpeed = 2000;
                 var currentTime = (new Date()).getTime();
                 var passedTime = currentTime - self.parent.startTime;
-                var angle = Math.PI * 2 * (passedTime / rotationSpeed);
+                var angle = Math.PI * 2 * (passedTime / self.orbit.speed);
 
-                self.x = self.x + Math.cos(angle) * 5;
-                self.y = self.y + Math.sin(angle) * 5;
+                self.x = self.x + Math.sin(angle);
+                self.y = self.y + Math.cos(angle);
             }
         }
 
@@ -375,11 +377,17 @@ ParticleText.prototype.rasterize = function(){
             if(self.checkPixel(y,x))
                 continue;
 
+            var speed = ((x%8) * 1000) + 1000;
+            console.log(speed);
             self.particles.push(new self.Particle(self, {
                 color : self.font.color,
                 size : self.size * (self.pixels[y][x].a/255),
                 x : (x * self.density) + self.width + (self.width/2),
-                y : (y * self.density) - ((self.height*self.density)/2)
+                y : (y * self.density) - ((self.height*self.density)/2),
+                orbit : {
+                    speed : speed+1000,
+                    distance : 1
+                }
             }));
            
         }
