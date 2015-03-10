@@ -378,7 +378,6 @@ ParticleText.prototype.rasterize = function(){
                 continue;
 
             var speed = ((x%8) * 1000) + 1000;
-            console.log(speed);
             self.particles.push(new self.Particle(self, {
                 color : self.font.color,
                 size : self.size * (self.pixels[y][x].a/255),
