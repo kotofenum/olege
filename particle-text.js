@@ -29,7 +29,7 @@ String.prototype.size = function(font) {
 //    tons of tiny rad gravitational particles
 // 
 // @author Michael Roth <mroth@highbridgecreative.com>
-// @version v0.0.1
+// @version v0.0.2
 //
 var ParticleText = function(text, params){
     // text to be particlized
@@ -90,10 +90,11 @@ var ParticleText = function(text, params){
         this.origY = params.y;
         this.vx = params.vx || 0;
         this.vy = params.vy || 0;
-        this.vMax = params.vMax || Math.random()* (5-2)+2;
+        this.vMax = params.vMax || Math.random() * (5-2)+2;
+        this.PI2 = Math.PI * 2;
         this.orbit = {
             speed : params.orbit.speed || 3000,
-            distance : params.orbit.distance || 5
+            distance : params.orbit.distance || 15
         };
     };
 
@@ -102,9 +103,10 @@ var ParticleText = function(text, params){
         var self = this;
 
         self.parent.ctx.beginPath();
-        self.parent.ctx.arc(self.x, self.y, self.size/2, 0, 2 * Math.PI);
+        self.parent.ctx.arc(self.x, self.y, self.size/2, 0, self.PI2);
         //self.parent.ctx.rect(self.x, self.y, self.size, self.size)
         self.parent.ctx.fillStyle = self.color;
+        self.parent.ctx.closePath();
         self.parent.ctx.fill();
     };
 
@@ -118,7 +120,7 @@ var ParticleText = function(text, params){
         self.x += self.vx;
 
         // TODO variation?
-        //var variation = Math.random();
+        // var variation = Math.random();
         var mouseForce = 15; // * variation;
         var originForce = 0.2; // * variation;
         var friction = 0.09; //* variation;
@@ -172,10 +174,10 @@ var ParticleText = function(text, params){
 
                 var currentTime = (new Date()).getTime();
                 var passedTime = currentTime - self.parent.startTime;
-                var angle = Math.PI * 2 * (passedTime / self.orbit.speed);
+                var angle = self.PI2 * (passedTime / self.orbit.speed);
 
-                self.x = self.x + Math.sin(angle);
-                self.y = self.y + Math.cos(angle);
+                self.x = mouse.x + self.orbit.distance * Math.sin(angle);
+                self.y = mouse.y + self.orbit.distance * Math.cos(angle);
             }
         }
 
@@ -207,8 +209,8 @@ var ParticleText = function(text, params){
         // --- collisions --- //
         // bottom
         var colDamp = 0.3;
-        if (self.y > (self.parent.canvas.height - self.radius)) {
-            self.y = self.parent.canvas.height - self.radius - 2;
+        if (self.y > (self.parent.canvas.height - self.size)) {
+            self.y = self.parent.canvas.height - self.size - 2;
             self.vy *= -1;
             self.vy *= (1 - colDamp);
         }
@@ -219,14 +221,14 @@ var ParticleText = function(text, params){
             self.vy *= (1 - colDamp);
         }
         // right
-        if (self.x > (self.parent.canvas.width - self.radius)) {
-            self.x = self.parent.canvas.width - self.radius - 2;
+        if (self.x > (self.parent.canvas.width - self.size)) {
+            self.x = self.parent.canvas.width - self.size - 2;
             self.vx *= -1;
             self.vx *= (1 - colDamp);
         }
         // left
-        if (self.x < (self.radius)) {
-            self.x = self.radius + 2;
+        if (self.x < (self.size)) {
+            self.x = self.size + 2;
             self.vx *= -1;
             self.vx *= (1 - colDamp);
         }
@@ -339,6 +341,9 @@ ParticleText.prototype.checkPixel = function(y, x) {
  */
 ParticleText.prototype.rasterize = function(){
     var self = this;
+    // reset
+    self.particles = [];
+    self.pizels = [];
 
     // setup word
     self.ctx.fillStyle = self.font.color;
@@ -373,7 +378,7 @@ ParticleText.prototype.rasterize = function(){
     for(var y = 0, yLen=self.pixels.length; y<yLen; y++) {
         for(var x = 0, xLen=self.pixels[y].length; x<xLen; x++) {
 
-            // white pixel?
+            // transparent pixel?
             if(self.checkPixel(y,x))
                 continue;
 
@@ -385,7 +390,7 @@ ParticleText.prototype.rasterize = function(){
                 y : (y * self.density) - ((self.height*self.density)/2),
                 orbit : {
                     speed : speed+1000,
-                    distance : 1
+                    distance : (speed/1000) + 12
                 }
             }));
            
