@@ -13,23 +13,57 @@
                 margin: 40px;
                 text-align: center;
             }
+
+            .wrap {
+                position: relative;
+            }
+            #canvas1,#canvas2 {
+                margin: -5% 0 0 15%;
+            }
+            #canvas3 {
+                position: absolute;
+                top : 20%;
+                right: 100px;
+            }
         </style>
     </head>
     <body>
-        <h1>DO YOU</h1>
-        <canvas id="canvas1" style="position:absolute; top:160px; left: 200px;"></canvas>
-        <canvas id="canvas2" style="position:absolute; top:400px; right: 200px;"></canvas>
-        <canvas id="canvas3" style="position:absolute; top:380px; left: 250px;"></canvas>
+        
+        <div class="wrap">
+            <h1>DO YOU</h1>
+            <canvas id="canvas1"></canvas>
+            <canvas id="canvas2"></canvas>
+            <canvas id="canvas3"></canvas>
+        </div>
+       
         <script>
+
+            // simple debouncer for events
+            var debounce = function(func, wait, immediate) {
+                var timeout;
+                return function() {
+                    var context = this, args = arguments;
+                    var later = function() {
+                        timeout = null;
+                        if (!immediate) func.apply(context, args);
+                    };
+                    var callNow = immediate && !timeout;
+                    clearTimeout(timeout);
+                    timeout = setTimeout(later, wait);
+                    if (callNow) func.apply(context, args);
+                };
+            };
+
             // setup particle gravity text
-            window.onload = function(){
+            window.onload = function() {
+
                 var pt1 = new ParticleText('HAVE',{
                      canvas : 'canvas1',
                      density: 8,
                      size: 6,
                      font : {
                         color : '#83CEB8',
-                        size: 28
+                        size: 22
                     }
                 });
                 var pt2 = new ParticleText('PULL?',{
@@ -38,7 +72,7 @@
                      size: 6,
                      font : {
                         color : '#EA3341',
-                        size: 28
+                        size: 22
                     }
                 });
                 var pt3 = new ParticleText('+',{
@@ -47,9 +81,45 @@
                      size: 2,
                      font : {
                         color : '#444',
-                        size: 50
+                        size: 40
                     }
                 });
+
+                // debounced resize event
+                var efficientResize = debounce(function(){
+                    pt1.destroy();
+                    pt2.destroy();
+                    pt3.destroy();
+
+                    var w = window.innerWidth;
+                    if(w <= 641) {
+                        pt1.density = 6;
+                        pt1.size = 4;
+                        pt1.font.size = 14;
+                        pt1.disableAnim = true;
+                        pt2.density = 6;
+                        pt2.size = 4;
+                        pt2.font.size = 14;
+                        pt2.disableAnim = true;
+                        pt3.disableAnim = true;
+                    } else {
+                        pt1.density = 8;
+                        pt1.size = 6;
+                        pt1.font.size = 26;
+                        pt1.disableAnim = false;
+                        pt2.density = 8;
+                        pt2.size = 6;
+                        pt2.font.size = 26;
+                        pt2.disableAnim = false;
+                        pt3.disableAnim = false;
+                    }
+
+                    pt1.init();
+                    pt2.init();
+                    pt3.init();
+                }, 250);
+                window.addEventListener("resize", efficientResize);
+
             };
             
         </script>

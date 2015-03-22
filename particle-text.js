@@ -1,7 +1,7 @@
 
 /* 
  * size
- *  - String width/size hack 
+ *  - String width/size hack
  *  (because measureText sucks)
  * 
  * @param {string} font
@@ -22,6 +22,36 @@ String.prototype.size = function(font) {
       o.parentNode.removeChild(o);
   return { height :h, width: w };
 };
+
+/**
+ * requestAnimationFrame 
+ *  - polyfill via Paul Irish
+ *   https://gist.github.com/paulirish/1579671
+ */
+(function() {
+    var lastTime = 0;
+    var vendors = ['webkit', 'moz'];
+    for(var x = 0; x < vendors.length && !window.requestAnimationFrame; ++x) {
+        window.requestAnimationFrame = window[vendors[x]+'RequestAnimationFrame'];
+        window.cancelAnimationFrame =
+          window[vendors[x]+'CancelAnimationFrame'] || window[vendors[x]+'CancelRequestAnimationFrame'];
+    }
+
+    if (!window.requestAnimationFrame)
+        window.requestAnimationFrame = function(callback, element) {
+            var currTime = new Date().getTime();
+            var timeToCall = Math.max(0, 16 - (currTime - lastTime));
+            var id = window.setTimeout(function() { callback(currTime + timeToCall); },
+              timeToCall);
+            lastTime = currTime + timeToCall;
+            return id;
+        };
+
+    if (!window.cancelAnimationFrame)
+        window.cancelAnimationFrame = function(id) {
+            clearTimeout(id);
+        };
+}());
 
 // 
 // particleText
@@ -59,6 +89,8 @@ var ParticleText = function(text, params){
     };
 
     // general
+    this.disableAnim = false;
+    this.animId = null;
     this.startTime = null;
     this.particles = [];
     this.pixels = [],
@@ -69,7 +101,7 @@ var ParticleText = function(text, params){
     this.center = {
         x : 0, 
         y: 0
-    };  
+    };
 
     /**
      * particle
@@ -252,6 +284,25 @@ ParticleText.prototype.updateMousePos = function(e) {
 };
 
 /*
+ * mousemove
+ *  - mouse move event functionality
+ */
+ParticleText.prototype.mousemove = function(e) {
+    var pos = this.updateMousePos(e);
+    this.mouse.x = pos.x;
+    this.mouse.y = pos.y;
+};
+
+/*
+ * mouseout
+ *  - mouse out event functionality
+ */
+ParticleText.prototype.mouseout = function(e) {
+    this.mouse.x = 9999;
+    this.mouse.y = 9999;
+};
+
+/*
  * getOffset
  *  - get top/left offset of element
  *
@@ -302,19 +353,10 @@ ParticleText.prototype.animate = function() {
         len--;
     }
 
-    // --- request new frame --- //
-    var requestAnimFrame = (function(callback) {
-        return window.requestAnimationFrame 
-            || window.webkitRequestAnimationFrame 
-            || window.mozRequestAnimationFrame 
-            || window.oRequestAnimationFrame 
-            || window.msRequestAnimationFrame 
-            || function(callback) {
-                window.setTimeout(callback, 1000 / 60);
-            };
-    })();
+    // diabled animations
+    if(self.disableAnim) return true;
 
-    requestAnimFrame(function doAnim(){
+    self.animId = requestAnimationFrame(function doAnim(){
         self.animate();
     });
 };
@@ -427,19 +469,8 @@ ParticleText.prototype.init = function() {
         };
 
         // bind events
-        var mousemove = function(e) {
-            var pos = this.updateMousePos(e);
-            this.mouse.x = pos.x;
-            this.mouse.y = pos.y;
-        };
-        var mouseout = function(e) {
-            this.mouse.x = 9999;
-            this.mouse.y = 9999;
-        };
-        self.canvas.removeEventListener('mousemove', mousemove);
-        self.canvas.addEventListener('mousemove', mousemove.bind(self));
-        self.canvas.removeEventListener('mouseout', mouseout);
-        self.canvas.addEventListener('mouseout', mouseout.bind(self));
+        self.canvas.addEventListener('mousemove', self.mousemove.bind(self));
+        self.canvas.addEventListener('mouseout', self.mouseout.bind(self));
 
         // rasterize the word
         setTimeout(function(){
@@ -451,4 +482,30 @@ ParticleText.prototype.init = function() {
             self.animate();
         },10);
         
+};
+
+/**
+ * destroy
+ *  - unbind events / unintialize
+ */
+ParticleText.prototype.destroy = function() {
+    var self = this;
+
+    // clear bound events
+    if(self.animId) {
+        cancelAnimationFrame(self.animId);
+    }
+    self.canvas.removeEventListener('mousemove', self.mousemove);
+    self.canvas.removeEventListener('mouseout', self.mouseout);
+
+    // reset canvas
+    var canvas = document.getElementById(self.id);
+    if(canvas.parentNode) {
+      var parent = canvas.parentNode;
+      parent.removeChild(canvas);
+      var newCanvas = document.createElement('canvas');
+      newCanvas.id = self.id;
+      parent.appendChild(newCanvas);
+    }
+
 };
