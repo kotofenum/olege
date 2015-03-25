@@ -59,7 +59,7 @@ String.prototype.size = function(font) {
 //    tons of tiny rad gravitational particles
 // 
 // @author Michael Roth <mroth@highbridgecreative.com>
-// @version v0.0.2
+// @version v0.0.3
 //
 var ParticleText = function(text, params){
     // text to be particlized
@@ -125,8 +125,7 @@ var ParticleText = function(text, params){
         this.vMax = params.vMax || Math.random() * (5-2)+2;
         this.PI2 = Math.PI * 2;
         this.orbit = {
-            speed : params.orbit.speed || 3000,
-            distance : params.orbit.distance || 15
+            speed : params.orbit.speed || 3000
         };
     };
 
@@ -155,6 +154,7 @@ var ParticleText = function(text, params){
         // var variation = Math.random();
         var mouseForce = 15; // * variation;
         var originForce = 0.2; // * variation;
+
         var friction = 0.09; //* variation;
 
         // --- target positions --- //
@@ -167,11 +167,15 @@ var ParticleText = function(text, params){
             // origin
             if (self.x > self.origX) {
                 self.vx -= originForce;
+            } else if((self.x < self.origX+0.1 && self.x > self.origX-0.1)) {
+                self.vx = 0;
             } else {
                 self.vx += originForce;
             }
             if (self.y > self.origY) {
                 self.vy -= originForce;
+            } else if((self.y < self.origY+0.1 && self.y > self.origY-0.1)) {
+                self.vy = 0;
             } else {
                 self.vy += originForce;
             }
@@ -208,8 +212,8 @@ var ParticleText = function(text, params){
                 var passedTime = currentTime - self.parent.startTime;
                 var angle = self.PI2 * (passedTime / self.orbit.speed);
 
-                self.x = mouse.x + self.orbit.distance * Math.sin(angle);
-                self.y = mouse.y + self.orbit.distance * Math.cos(angle);
+                self.x = self.x + Math.sin(angle);
+                self.y = self.y + Math.cos(angle);
             }
         }
 
@@ -431,8 +435,7 @@ ParticleText.prototype.rasterize = function(){
                 x : (x * self.density) + self.width + (self.width/2),
                 y : (y * self.density) - ((self.height*self.density)/2),
                 orbit : {
-                    speed : speed+1000,
-                    distance : (speed/1000) + 12
+                    speed : speed+1000
                 }
             }));
            
@@ -500,7 +503,7 @@ ParticleText.prototype.destroy = function() {
 
     // reset canvas
     var canvas = document.getElementById(self.id);
-    if(canvas.parentNode) {
+    if(canvas && canvas.parentNode) {
       var parent = canvas.parentNode;
       parent.removeChild(canvas);
       var newCanvas = document.createElement('canvas');
