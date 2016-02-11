@@ -1,6 +1,10 @@
 # particle-text
 An HTML5 canvas font physics experiment and concept piece. It's also just really fun to play with.
 
+**[View Demo](http://michaelharrisonroth.github.io/particle-text/)**
+
+To see it in action on a real site, check out [michaelharrisonroth.com](http://michaelharrisonroth.com).
+
 ## Setup/Installation
 
 There are no additional dependencies (not even jquery) so all you need to do is include the script.
